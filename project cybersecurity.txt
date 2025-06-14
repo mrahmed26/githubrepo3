@@ -1,0 +1,99 @@
+import argparse
+import itertools
+import string
+from zxcvbn import zxcvbn
+from nltk.corpus import words
+import nltk
+import os
+
+nltk.download('words')
+
+# Leetspeak map
+LEET_MAP = {
+    'a': ['4', '@'],
+    'e': ['3'],
+    'i': ['1', '!'],
+    'o': ['0'],
+    's': ['$', '5'],
+    't': ['7']
+}
+
+def leetspeak_variants(word):
+    """Generate leetspeak variants of a word."""
+    variants = set()
+
+    def helper(prefix, remainder):
+        if not remainder:
+            variants.add(prefix)
+            return
+        char = remainder[0]
+        if char.lower() in LEET_MAP:
+            for sub in LEET_MAP[char.lower()] + [char]:
+                helper(prefix + sub, remainder[1:])
+        else:
+            helper(prefix + char, remainder[1:])
+
+    helper('', word)
+    return list(variants)
+
+def append_common_suffixes(word):
+    """Append years and common suffixes."""
+    suffixes = ['', '123', '!', '@', '2024', '2025']
+    return [word + suffix for suffix in suffixes]
+
+def generate_wordlist(inputs):
+    """Generate custom wordlist based on user inputs."""
+    wordlist = set()
+
+    for item in inputs:
+        item = item.lower()
+        variants = leetspeak_variants(item)
+        for variant in variants:
+            combos = append_common_suffixes(variant)
+            wordlist.update(combos)
+
+    return sorted(wordlist)
+
+def analyze_password(password):
+    """Analyze password strength using zxcvbn."""
+    result = zxcvbn(password)
+    score = result['score']
+    feedback = result['feedback']
+    print(f"Password Score: {score}/4")
+    if feedback['warning']:
+        print(f"Warning: {feedback['warning']}")
+    if feedback['suggestions']:
+        print("Suggestions:")
+        for suggestion in feedback['suggestions']:
+            print(f" - {suggestion}")
+
+def export_wordlist(wordlist, filename):
+    """Export wordlist to .txt file."""
+    with open(filename, 'w') as f:
+        for word in wordlist:
+            f.write(word + '\n')
+    print(f"[+] Wordlist exported to {filename}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Password Strength Analyzer & Wordlist Generator")
+    parser.add_argument('--analyze', type=str, help="Analyze password strength")
+    parser.add_argument('--inputs', nargs='*', help="User-related inputs (name, pet, dob, etc.)")
+    parser.add_argument('--export', type=str, help="Filename to export wordlist")
+
+    args = parser.parse_args()
+
+    if args.analyze:
+        analyze_password(args.analyze)
+
+    if args.inputs:
+        wordlist = generate_wordlist(args.inputs)
+        print(f"Generated {len(wordlist)} wordlist entries.")
+
+        if args.export:
+            export_wordlist(wordlist, args.export)
+        else:
+            for word in wordlist:
+                print(word)
+
+if _name_ == "_main_":
+    main()
